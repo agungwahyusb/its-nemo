@@ -73,13 +73,19 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/usr/share/grafana/conf/provisioning/
+#      - ./grafana/:/etc/grafana
     environment:
       - GF_SECURITY_ADMIN_USER=${ADMIN_USER}
       - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://10.199.16.62:3000/
       - GF_RENDERING_SERVER_URL=http://renderer:8081/render
       - GF_RENDERING_CALLBACK_URL=http://grafana:3000/
       - GF_LOG_FILTERS= rendering:debug
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_NAME=DPTSI
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+
     restart: unless-stopped
     ports:
       - "3000:3000"
