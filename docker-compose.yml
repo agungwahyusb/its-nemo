@@ -1,0 +1,100 @@
+version: '2.1'
+
+#networks:
+#  monitor-net:
+#    driver: bridge
+
+volumes:
+    prometheus_data: {}
+    grafana_data: {}
+
+services:
+
+  prometheus:
+    image: prom/prometheus:v2.17.1
+    container_name: prometheus
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+#    networks:
+#      - monitor-net
+    labels:
+      org.label-schema.group: "monitoring"
+
+  snmp-exporter:
+    image: prom/snmp-exporter
+#    image: quay.io/prometheus/snmp-exporter
+    container_name: snmp-exporter
+#    volumes:
+#      - ./snmp-exporter:/etc/snmp-exporter
+#    command:
+#      - '--config.file=etc/snmp-exporter/snmp.yml'
+    ports:
+      - "9116:9116"
+
+#  snmp2-exporter:
+#    image: prom/snmp-exporter:v0.18.0
+#    container_name: snmp2-exporter
+#    volumes:
+#      - ./snmp2-exporter/:/etc/snmp-exporter
+#    command:
+#      - '--config.file=/etc/snmp-exporter/snmp.yml'
+#    ports:
+#      - "9117:9116"
+
+  ping-exporter:
+#    image: czerwonk/ping_exporter:latest
+    image: knsdnet/ping-exporter:0.3.1
+    container_name: ping-exporter
+    volumes:
+      - ./ping-exporter/config:/config:ro
+    ports:
+      - "9346:9346"
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:master
+    container_name: blackbox-exporter
+    ports:
+      - "9115:9115"
+
+  grafana:
+    image: grafana/grafana:master
+    container_name: grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/usr/share/grafana/conf/provisioning/
+    environment:
+      - GF_SECURITY_ADMIN_USER=${ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_RENDERING_SERVER_URL=http://renderer:8081/render
+      - GF_RENDERING_CALLBACK_URL=http://grafana:3000/
+      - GF_LOG_FILTERS= rendering:debug
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+#    networks:
+#      - monitor-net
+    labels:
+      org.label-schema.group: "monitoring"
+
+  renderer:
+    image: grafana/grafana-image-renderer:latest
+    container_name: renderer
+    ports:
+      - "8081:8081"
+    environment:
+      - ENABLE_METRICS=true
+      - RENDERING_MODE=clustered
+      - RENDERING_CLUSTERING_MODE=context
+      - RENDERING_CLUSTERING_MAX_CONCURRENCY=5
